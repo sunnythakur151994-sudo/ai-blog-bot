@@ -1,4 +1,4 @@
-name: Blog Bot
+name: AI Blog Bot
 
 on:
   schedule:
@@ -11,17 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install libraries
+    - name: Install Requirements
       run: |
         pip install -r requirements.txt
 
-    - name: Run bot
+    - name: Create credentials.json
+      run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+    - name: Create token.json
+      run: echo '${{ secrets.GOOGLE_TOKEN }}' > token.json
+
+    - name: Run Bot
+      env:
+        NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       run: |
         python main.py
