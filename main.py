@@ -13,8 +13,9 @@ BLOG_ID = "8997390388821877620"
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
 GOOGLE_TOKEN = os.environ.get("GOOGLE_TOKEN")
 UNSPLASH_KEY = os.environ.get("UNSPLASH_KEY")
+NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 
-# ================= NVIDIA =================
+# ================= NVIDIA CLIENT =================
 client = OpenAI(
     api_key=NVIDIA_API_KEY,
     base_url="https://integrate.api.nvidia.com/v1"
@@ -25,6 +26,22 @@ def authenticate():
     creds_dict = json.loads(GOOGLE_TOKEN)
     return Credentials.from_authorized_user_info(creds_dict)
 
+# ================= NEWS =================
+def get_news():
+    try:
+        url = f"https://newsapi.org/v2/top-headlines?country=in&pageSize=10&apiKey={NEWS_API_KEY}"
+        res = requests.get(url).json()
+        articles = res.get("articles", [])
+
+        headlines = []
+        for a in articles:
+            if a.get("title"):
+                headlines.append(a["title"])
+
+        return headlines
+    except:
+        return ["Latest world news updates"]
+
 # ================= IMAGE =================
 def get_image(query):
     try:
@@ -34,14 +51,17 @@ def get_image(query):
         return None
 
 # ================= HUMANIZER =================
-def humanize_text(text):
-    phrases = ["Honestly,", "I think", "To be real,", "In my opinion,"]
+def humanize(text):
+    phrases = ["Honestly,", "I think", "To be real,", "In my opinion,", "From what I’ve seen,"]
     parts = text.split(". ")
 
     for i in range(0, len(parts), 3):
         parts[i] = random.choice(phrases) + " " + parts[i]
 
-    return ". ".join(parts)
+    text = ". ".join(parts)
+    text = text.replace("do not", "don't").replace("cannot", "can't")
+
+    return text
 
 def add_story(text):
     stories = [
@@ -51,49 +71,62 @@ def add_story(text):
     ]
     return random.choice(stories) + "<br><br>" + text
 
-# ================= GENERATE =================
-def generate_blog(topic, mode):
+# ================= GENERATOR =================
+def generate(topic, mode):
 
     if mode == "morning":
-        prompt = f"""
-Write a blog on top 10 current news.
+        news = get_news()
+        topic = ", ".join(news[:5])
 
-- Explain each news
+        prompt = f"""
+Write a blog using these real news headlines:
+
+{topic}
+
+- Cover top 10 news
+- Explain each clearly
 - Add your opinion
 """
 
     elif mode == "afternoon":
         prompt = f"""
 Write a human-like story about {topic}
+
+- Personal storytelling
+- Emotional and engaging
 """
 
     elif mode == "evening":
-        prompt = f"""
+        prompt = """
 Write about trending AI tools and technologies
+
+- Latest tools
+- Use cases
+- Add your opinion
 """
 
     else:
         prompt = f"""
-Write a trending blog on {topic}
+Write a trending SEO blog on {topic}
 """
 
     prompt += """
 
 Write like a human:
 - casual tone
-- use "I think", "honestly"
+- use opinions (I think, honestly)
 - mix sentence length
-- ask questions
+- ask 1-2 questions
 """
 
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
         model="meta/llama-3.1-70b-instruct",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.8,
         max_tokens=1200
     )
 
-    return response.choices[0].message.content
+    return res.choices[0].message.content
 
 # ================= FORMAT =================
 def format_blog(content):
@@ -101,7 +134,7 @@ def format_blog(content):
     title = lines[0].replace("#", "").strip()
     body = "<br>".join(lines[1:])
 
-    img = get_image(title[:50])
+    img = get_image("news " + title[:40])
     if img:
         body = f'<img src="{img}" style="width:100%;border-radius:10px;"><br><br>' + body
 
@@ -115,7 +148,7 @@ def publish(title, content):
     post = {
         "title": title,
         "content": content,
-        "labels": ["AI", "Tech"]
+        "labels": ["AI", "Tech", "Trending"]
     }
 
     service.posts().insert(blogId=BLOG_ID, body=post).execute()
@@ -143,12 +176,13 @@ def run():
 
     print("Mode:", mode)
 
-    content = generate_blog(topic, mode)
-    content = humanize_text(content)
+    content = generate(topic, mode)
+    content = humanize(content)
     content = add_story(content)
 
     title, body = format_blog(content)
     publish(title, body)
 
+# ================= RUN =================
 if __name__ == "__main__":
     run()
