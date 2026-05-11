@@ -53,80 +53,63 @@ def get_image(query):
     except:
         return None
 
-# ================= HUMAN STYLE =================
+# ================= HUMANIZER =================
 def humanize(text):
-    starters = ["Honestly,", "I think", "To be real,", "In my opinion,"]
-    parts = text.split(". ")
+    # remove AI-like phrases
+    text = text.replace("Honestly,", "")
+    text = text.replace("In conclusion,", "")
+    text = text.replace("Overall,", "")
 
-    for i in range(0, len(parts), 3):
-        parts[i] = random.choice(starters) + " " + parts[i]
-
-    return ". ".join(parts)
-
-def add_story(text):
-    return random.choice([
-        "I remember when I first saw something like this...",
-        "Not gonna lie, this surprised me...",
-        "This reminded me of something I experienced..."
-    ]) + "<br><br>" + text
+    return text
 
 # ================= GENERATOR =================
 def generate(topic, mode):
 
-    styles = [
-        "engaging storytelling",
-        "professional blog",
-        "casual friendly tone",
-        "high energy viral style"
-    ]
-
-    style = random.choice(styles)
-
     if mode == "morning":
         topic = ", ".join(get_news()[:5])
         prompt = f"""
-Write a visually attractive blog using:
+Write a clean, professional blog using these real news headlines:
 
 {topic}
 
-- Use emojis
-- Bold headings
-- Each news should have explanation
-- Add opinion
+Instructions:
+- Do NOT use stars (**)
+- Do NOT use markdown
+- Use natural human tone
+- Write like a real blogger
+- No emojis
+- No repeated phrases
+- Use proper headings (like section titles)
 """
 
     elif mode == "night":
         topic = random.choice(get_trending())
         prompt = f"""
-Write a viral trending blog on:
+Write a blog on this trending topic:
 
 {topic}
 
-- Why trending
-- Full explanation
-- Opinion
+Explain it naturally like a human writer.
+No markdown or symbols.
 """
 
     elif mode == "evening":
-        prompt = "Write about trending AI tools with visuals and excitement"
+        prompt = """
+Write about trending AI tools in a clean blog style.
+"""
 
     else:
-        prompt = f"Write a story about {topic} with emotional storytelling"
+        prompt = f"""
+Write a real-life style story about {topic}
 
-    prompt += f"""
-
-STYLE:
-- {style}
-- Add emojis (not too many)
-- Use bold headings
-- Break into sections
-- Make it engaging and readable
+Make it emotional and natural.
+Avoid robotic tone.
 """
 
     res = client.chat.completions.create(
         model="meta/llama-3.1-70b-instruct",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
+        temperature=0.85,
         max_tokens=1200
     )
 
@@ -135,38 +118,39 @@ STYLE:
 # ================= FORMAT =================
 def format_blog(content, keyword):
 
-    sections = content.split("\n")
-    title = sections[0].replace("#", "").strip() + " 🔥"
+    lines = content.split("\n")
 
+    title = lines[0].strip()
     body = ""
 
-    for sec in sections[1:]:
-        if len(sec.strip()) < 5:
+    for line in lines[1:]:
+
+        line = line.strip()
+
+        if not line:
             continue
 
-        # Add bold headings
-        if sec.lower().startswith("##") or sec.isupper():
-            body += f"<h2><b>{sec}</b></h2>"
-
+        # Detect headings (clean)
+        if len(line) < 80 and line.istitle():
+            body += f"<h2 style='font-weight:bold;margin-top:20px'>{line}</h2>"
         else:
-            body += f"<p>{sec}</p>"
+            body += f"<p style='line-height:1.7'>{line}</p>"
 
-            # Add image after some paragraphs
-            if random.random() > 0.6:
+            # Insert images naturally
+            if random.random() > 0.7:
                 img = get_image(keyword)
                 if img:
-                    body += f'<img src="{img}" style="width:100%;margin:10px 0;border-radius:10px;">'
+                    body += f'<img src="{img}" style="width:100%;margin:15px 0;border-radius:8px;">'
 
-    # Add top image
+    # Top image
     top_img = get_image(keyword)
     if top_img:
-        body = f'<img src="{top_img}" style="width:100%;border-radius:12px;"><br><br>' + body
+        body = f'<img src="{top_img}" style="width:100%;border-radius:10px;"><br><br>' + body
 
-    # Monetization
+    # Monetization placeholder
     body += """
     <br><br>
-    👉 <b>Recommended:</b> https://amzn.to/YOUR-LINK  
-    👉 <b>More guides:</b> Visit our blog daily!
+    <b>Recommended:</b> https://amzn.to/YOUR-LINK
     """
 
     return title, body
@@ -180,7 +164,7 @@ def publish(title, content):
         body={
             "title": title,
             "content": content,
-            "labels": ["Trending", "AI", "News"]
+            "labels": ["Blog", "News", "AI"]
         }
     ).execute()
 
@@ -208,7 +192,6 @@ def run():
 
     content, keyword = generate(topic, mode)
     content = humanize(content)
-    content = add_story(content)
 
     title, body = format_blog(content, keyword)
     publish(title, body)
