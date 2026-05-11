@@ -1,136 +1,124 @@
 import os
-import requests
-import feedparser
-import random
-from blogger_post import publish_post
+import json
+from openai import OpenAI
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 # =========================
-# NVIDIA API SETTINGS
+# 🔐 CONFIG SECTION
 # =========================
 
-API_KEY = os.getenv("NVIDIA_API_KEY")
+# 👉 PASTE YOUR BLOG ID HERE
+BLOG_ID = "PASTE_YOUR_BLOG_ID_HERE"
 
-MODEL = "meta/llama-3.1-70b-instruct"
-
-# =========================
-# RSS FEEDS
-# =========================
-
-feeds = {
-    "tech": "https://feeds.feedburner.com/TechCrunch/",
-    "entertainment": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
-    "world": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
-}
+# 👉 NVIDIA API KEY (put in environment variable for safety)
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
 
 # =========================
-# HORROR STORY TOPICS
+# 🤖 AI CLIENT (NVIDIA)
 # =========================
 
-horror_prompts = [
-    "A haunted hotel room",
-    "The ghost inside a school",
-    "Midnight train horror mystery",
-    "A cursed village forest",
-    "A terrifying abandoned hospital"
-]
+client = OpenAI(
+    api_key=NVIDIA_API_KEY,
+    base_url="https://integrate.api.nvidia.com/v1"
+)
 
 # =========================
-# GET RANDOM TOPIC
+# 🔐 GOOGLE AUTH (ENV TOKEN)
 # =========================
 
-def get_topic(category):
+def authenticate():
+    token_str = os.environ.get("GOOGLE_TOKEN")
 
-    feed = feedparser.parse(feeds[category])
+    if not token_str:
+        raise Exception("❌ GOOGLE_TOKEN not found in environment variables")
 
-    entry = random.choice(feed.entries)
+    creds_dict = json.loads(token_str)
+    creds = Credentials.from_authorized_user_info(creds_dict)
 
-    return entry.title
+    return creds
 
 # =========================
-# GENERATE BLOG USING NVIDIA AI
+# ✍️ GENERATE BLOG
 # =========================
 
-def generate_blog(topic, niche):
+def generate_blog(topic):
+    response = client.chat.completions.create(
+        model="meta/llama-3.1-70b-instruct",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""
+Write a high-quality, SEO-optimized blog post on: {topic}
 
-    prompt = f"""
-Write a high-quality human-style blog article.
-
-TOPIC:
-{topic}
-
-NICHE:
-{niche}
-
-RULES:
-- conversational tone
-- SEO optimized
-- engaging introduction
-- headings and subheadings
-- natural writing style
-- informative and interesting
-- 1000+ words
-- conclusion section
-- FAQ section
+Include:
+- Catchy title
+- Introduction
+- 5-7 headings
+- Conclusion
+- Make it engaging and human-like
 """
-
-    response = requests.post(
-        "https://integrate.api.nvidia.com/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "max_tokens": 1800
-        }
+            }
+        ],
+        temperature=0.7,
+        max_tokens=1200
     )
 
-    data = response.json()
-
-    print(data)
-
-    if "choices" not in data:
-        print("NVIDIA API ERROR")
-        return
-
-    article = data["choices"][0]["message"]["content"]
-
-    publish_post(topic, article)
-
-    print(f"Posted Successfully: {topic}")
+    return response.choices[0].message.content
 
 # =========================
-# MAIN BOT WORKFLOW
+# 🧹 FORMAT BLOG
+# =========================
+
+def format_blog(content):
+    lines = content.split("\n")
+
+    # First line = title
+    title = lines[0].replace("#", "").strip()
+
+    # Rest = body
+    body = "<br>".join(lines[1:])
+
+    return title, body
+
+# =========================
+# 🌐 PUBLISH TO BLOGGER
+# =========================
+
+def publish_post(title, content):
+    creds = authenticate()
+    service = build("blogger", "v3", credentials=creds)
+
+    post = {
+        "title": title,
+        "content": content
+    }
+
+    service.posts().insert(
+        blogId=BLOG_ID,
+        body=post
+    ).execute()
+
+    print(f"✅ Posted: {title}")
+
+# =========================
+# 🔁 MAIN BOT FUNCTION
 # =========================
 
 def run_bot():
+    topic = "Latest AI Tools 2026"   # you can make this dynamic later
 
-    # TECH BLOG
-    tech_topic = get_topic("tech")
-    generate_blog(tech_topic, "Technology")
+    print("⚡ Generating blog...")
+    content = generate_blog(topic)
 
-    # ENTERTAINMENT BLOG
-    entertainment_topic = get_topic("entertainment")
-    generate_blog(entertainment_topic, "Entertainment")
+    print("🧹 Formatting blog...")
+    title, body = format_blog(content)
 
-    # HORROR STORY
-    horror_topic = random.choice(horror_prompts)
-    generate_blog(horror_topic, "Horror Story")
-
-    # TRENDING NEWS
-    world_topic = get_topic("world")
-    generate_blog(world_topic, "Trending News")
+    print("🚀 Publishing blog...")
+    publish_post(title, body)
 
 # =========================
-# START BOT
+# ▶️ RUN
 # =========================
 
 if __name__ == "__main__":
