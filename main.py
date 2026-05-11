@@ -6,7 +6,7 @@ from blogger_post import publish_post
 
 API_KEY = os.getenv("NVIDIA_API_KEY")
 
-MODEL = "meta/llama3-70b-instruct"
+MODEL = "meta/llama-3.1-70b-instruct"
 
 # ----------------------------
 # NEWS SOURCES
@@ -89,15 +89,17 @@ RULES:
         }
     )
 
-    data = response.json()
+  data = response.json()
 
-    print(data)
+print(data)
 
-    article = data["choices"][0]["message"]["content"]
+if "choices" not in data:
+    print("NVIDIA API ERROR")
+    return
 
-    publish_post(topic, article)
+article = data["choices"][0]["message"]["content"]
 
-    print(f"Posted Successfully: {topic}")
+publish_post(topic, article)
 
 # ----------------------------
 # MAIN AUTOMATION
