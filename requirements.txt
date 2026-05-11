@@ -1,7 +1,4 @@
+openai>=1.0.0
 google-api-python-client
-google-auth-oauthlib
-google-auth-httplib2
+google-auth
 requests
-feedparser
-python-dotenv
-beautifulsoup4
