@@ -46,7 +46,7 @@ def get_trending():
     except:
         return ["trending topic"]
 
-# ================= SMART IMAGE =================
+# ================= IMAGE =================
 def get_image(query):
     try:
         url = f"https://api.unsplash.com/photos/random?query={query}&client_id={UNSPLASH_KEY}"
@@ -57,72 +57,47 @@ def get_image(query):
 def get_context_image(text):
     text = text.lower()
 
-    if "sad" in text or "pain" in text:
-        return get_image("sad emotional scene")
-
-    elif "happy" in text or "success" in text:
+    if "sad" in text:
+        return get_image("sad emotional person")
+    elif "happy" in text:
         return get_image("happy success moment")
-
     elif "fear" in text or "dark" in text:
         return get_image("dark horror scene")
-
-    elif "journey" in text or "travel" in text:
+    elif "journey" in text:
         return get_image("travel journey road")
-
-    elif "technology" in text or "ai" in text:
-        return get_image("futuristic technology ai")
+    elif "ai" in text:
+        return get_image("futuristic ai technology")
 
     return get_image(text[:40])
 
-# ================= HUMAN CLEAN =================
+# ================= CLEAN =================
 def clean_text(text):
+    text = text.replace("**", "")
     text = text.replace("Honestly,", "")
-    text = text.replace("In conclusion,", "")
-    text = text.replace("Overall,", "")
     return text
 
-# ================= GENERATOR =================
+# ================= GENERATE =================
 def generate(topic, mode):
 
     if mode == "morning":
         topic = ", ".join(get_news()[:5])
-        prompt = f"""
-Write a detailed blog using these real news topics:
-
-{topic}
-
-- Write in clean human style
-- No markdown or stars
-- Make it detailed and informative
-"""
+        prompt = f"Write a detailed blog on: {topic}"
 
     elif mode == "night":
         topic = random.choice(get_trending())
-        prompt = f"""
-Write a detailed blog on:
-
-{topic}
-
-Explain deeply and naturally.
-"""
+        prompt = f"Write a detailed blog on: {topic}"
 
     elif mode == "evening":
-        prompt = "Write a detailed blog on trending AI tools with explanation"
+        prompt = "Write about trending AI tools"
 
     else:
-        prompt = f"""
-Write a long emotional story about {topic}
-
-Make it engaging and human-like.
-"""
+        prompt = f"Write a human-like story about {topic}"
 
     prompt += """
-
-IMPORTANT:
 - No markdown (**)
 - No robotic tone
-- Use proper headings
-- Make content longer and engaging
+- Use headings naturally
+- Make content long and engaging
 """
 
     res = client.chat.completions.create(
@@ -139,11 +114,15 @@ def format_blog(content, keyword):
 
     lines = content.split("\n")
 
-    # 🔥 Title styling
-    title = lines[0].strip()
-    title = f"<h1 style='font-weight:bold;color:#111'>{title} 🔥</h1>"
+    raw_title = lines[0].strip()
 
-    body = ""
+    # 🔥 SEO TITLE (NO HTML)
+    title = raw_title + " 🔥"
+
+    # Styled title inside content
+    styled_title = f"<h1 style='font-weight:bold;color:#111'>{raw_title}</h1>"
+
+    body = styled_title
 
     for line in lines[1:]:
 
@@ -156,7 +135,6 @@ def format_blog(content, keyword):
             body += f"<h2 style='font-weight:bold;color:#222;margin-top:20px'>{line}</h2>"
 
         else:
-            # Add emotion emojis smartly
             if "happy" in line.lower():
                 line += " 😊"
             elif "sad" in line.lower():
@@ -164,9 +142,9 @@ def format_blog(content, keyword):
             elif "fear" in line.lower():
                 line += " 😨"
 
-            body += f"<p style='line-height:1.8;font-size:16px'>{line}</p>"
+            body += f"<p style='line-height:1.8'>{line}</p>"
 
-            # Context-based image
+            # Context image
             if random.random() > 0.6:
                 img = get_context_image(line)
                 if img:
@@ -175,7 +153,7 @@ def format_blog(content, keyword):
     # Top image
     top_img = get_image(keyword)
     if top_img:
-        body = f'<img src="{top_img}" style="width:100%;border-radius:12px;"><br><br>' + body
+        body = f'<img src="{top_img}" style="width:100%;border-radius:10px;"><br><br>' + body
 
     return title, body
 
@@ -186,13 +164,13 @@ def publish(title, content):
     service.posts().insert(
         blogId=get_blog_id(),
         body={
-            "title": "Blog Post",
-            "content": title + content,
-            "labels": ["Blog", "News", "Story"]
+            "title": title,  # ✅ FIXED
+            "content": content,
+            "labels": ["Blog", "SEO", "Trending"]
         }
     ).execute()
 
-    print("✅ Posted")
+    print("✅ Posted:", title)
 
 # ================= MAIN =================
 def run():
