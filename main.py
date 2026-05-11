@@ -4,13 +4,17 @@ import feedparser
 import random
 from blogger_post import publish_post
 
+# =========================
+# NVIDIA API SETTINGS
+# =========================
+
 API_KEY = os.getenv("NVIDIA_API_KEY")
 
 MODEL = "meta/llama-3.1-70b-instruct"
 
-# ----------------------------
-# NEWS SOURCES
-# ----------------------------
+# =========================
+# RSS FEEDS
+# =========================
 
 feeds = {
     "tech": "https://feeds.feedburner.com/TechCrunch/",
@@ -18,21 +22,21 @@ feeds = {
     "world": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
 }
 
-# ----------------------------
-# HORROR STORY PROMPTS
-# ----------------------------
+# =========================
+# HORROR STORY TOPICS
+# =========================
 
 horror_prompts = [
     "A haunted hotel room",
     "The ghost inside a school",
     "Midnight train horror mystery",
     "A cursed village forest",
-    "A terrifying abandoned hospital",
+    "A terrifying abandoned hospital"
 ]
 
-# ----------------------------
-# GET TRENDING TOPIC
-# ----------------------------
+# =========================
+# GET RANDOM TOPIC
+# =========================
 
 def get_topic(category):
 
@@ -42,9 +46,9 @@ def get_topic(category):
 
     return entry.title
 
-# ----------------------------
-# NVIDIA AI BLOG GENERATION
-# ----------------------------
+# =========================
+# GENERATE BLOG USING NVIDIA AI
+# =========================
 
 def generate_blog(topic, niche):
 
@@ -63,7 +67,7 @@ RULES:
 - engaging introduction
 - headings and subheadings
 - natural writing style
-- add opinions naturally
+- informative and interesting
 - 1000+ words
 - conclusion section
 - FAQ section
@@ -89,21 +93,23 @@ RULES:
         }
     )
 
-  data = response.json()
+    data = response.json()
 
-print(data)
+    print(data)
 
-if "choices" not in data:
-    print("NVIDIA API ERROR")
-    return
+    if "choices" not in data:
+        print("NVIDIA API ERROR")
+        return
 
-article = data["choices"][0]["message"]["content"]
+    article = data["choices"][0]["message"]["content"]
 
-publish_post(topic, article)
+    publish_post(topic, article)
 
-# ----------------------------
-# MAIN AUTOMATION
-# ----------------------------
+    print(f"Posted Successfully: {topic}")
+
+# =========================
+# MAIN BOT WORKFLOW
+# =========================
 
 def run_bot():
 
@@ -112,20 +118,20 @@ def run_bot():
     generate_blog(tech_topic, "Technology")
 
     # ENTERTAINMENT BLOG
-    ent_topic = get_topic("entertainment")
-    generate_blog(ent_topic, "Entertainment")
+    entertainment_topic = get_topic("entertainment")
+    generate_blog(entertainment_topic, "Entertainment")
 
     # HORROR STORY
-    horror = random.choice(horror_prompts)
-    generate_blog(horror, "Horror Story")
+    horror_topic = random.choice(horror_prompts)
+    generate_blog(horror_topic, "Horror Story")
 
-    # TRENDING WORLD NEWS
+    # TRENDING NEWS
     world_topic = get_topic("world")
     generate_blog(world_topic, "Trending News")
 
-# ----------------------------
+# =========================
 # START BOT
-# ----------------------------
+# =========================
 
 if __name__ == "__main__":
     run_bot()
