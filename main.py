@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 # =========================
 
 # 👉 PASTE YOUR BLOG ID HERE
-BLOG_ID = "PASTE_YOUR_BLOG_ID_HERE"
+BLOG_ID = "8997390388821877620"
 
 # 👉 NVIDIA API KEY (put in environment variable for safety)
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
